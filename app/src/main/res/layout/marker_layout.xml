@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:id="@+id/linear_edit_marker"
+        android:saveEnabled="false"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/discr"/>
+
+        <EditText
+            android:id="@+id/edit_title"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:text=""/>
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="5dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/icon_color"/>
+
+        <Spinner
+            android:id="@+id/color_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:entries="@array/colorIcon"/>
+
+        <View
+        android:layout_width="10dp"
+        android:layout_height="5dp"/>
+
+        <Button
+            android:id="@+id/save_marker"
+            android:background="@color/colorAccent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:text="@string/save"/>
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="5dp"/>
+
+        <Button
+            android:id="@+id/delete_marker"
+            android:background="@color/colorAccent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:text="@string/del_marker"/>
+
+    </LinearLayout>
+
+</LinearLayout>

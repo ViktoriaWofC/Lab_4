@@ -1,4 +1,16 @@
 <resources>
     <string name="app_name">Travel Diary</string>
     <string name="title_activity_maps">Travel Diary</string>
+    <string name="save">Сохранить</string>
+    <string name="discr">Описание:</string>
+    <string name="icon_color">Цвет иконки:</string>
+    <string name="del_marker">Удалить маркер</string>
+
+    <string-array name="colorIcon">
+        <item>Синий</item>
+        <item>Зеленый</item>
+        <item>Красный</item>
+        <item>Фиолетовый</item>
+        <item>Желтый</item>
+    </string-array>
 </resources>
