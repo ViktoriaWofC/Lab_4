@@ -11,6 +11,9 @@
     <string name="add_marker">Добавить метку</string>
     <string name="add_travel">Добавить путешествие</string>
     <string name="travel_list">Список путешествий:</string>
+    <string name="print_all">Показать все</string>
+    <string name="del_travel">Удалить путешествие</string>
+    <string name="mark_list">Список точек вне путешествий:</string>
 
     <string-array name="colorIcon">
         <item>Крест</item>

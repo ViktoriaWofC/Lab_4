@@ -1,6 +1,7 @@
 package com.user.example.lab_4;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -18,6 +19,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -68,6 +70,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Context context;
     List<PhotoMarker> photoMarkers = new ArrayList<>();
     List<Marker> markers = new ArrayList<>();
+    List<Marker> markersFree = new ArrayList<>();
     int id = -1;
     List<Travel> travels = new ArrayList<>();
     List<Polyline> polylines = new ArrayList<>();
@@ -82,12 +85,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     Button addCurrentPlace;
     Button addAdressPlace;
     Button addTravel;
+    Button printAll;
+    Button delTravel;
     Spinner iconSpinner;
     Spinner colorSpinner;
     LatLng latLngStart;
     LatLng latLngEnd;
 
+    AlertDialog al;
+    AlertDialog.Builder ad;
+
     RecyclerView recyclerTravel;
+    RecyclerView recyclerMarker;
 
 
     GoogleApiClient googleApiClient;
@@ -125,6 +134,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 markers.get(id).setTitle(editTitle.getText().toString());
                 markers.get(id).setIcon(photoMarkers.get(id).getIconBitm());
                 markers.get(id).hideInfoWindow();
+
+                recyclerMarker.getAdapter().notifyDataSetChanged();
             }
         });
 
@@ -133,6 +144,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         deleteMarker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
+                List<Travel> idd = new ArrayList<>();
+                for(int i = 0; i<travels.size();i++)
+                    if(travels.get(i).getLatLngStart().equals(markers.get(id).getPosition())) idd.add(travels.get(i));
+                    else if(travels.get(i).getLatLngEnd().equals(markers.get(id).getPosition())) idd.add(travels.get(i));
+                if(idd.size()>0){
+                    for(Travel tr: idd) {
+                        travels.remove(tr);
+                        //polyline.remove ?
+                    }
+                }
+
                 photoMarkers.remove(id);
                 //markers.get(id).setVisible(false);
                 markers.remove(id);
@@ -145,7 +168,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 addPhoto.setEnabled(false);
                 iconSpinner.setEnabled(false);
                 id = -1;
+
+                recyclerTravel.getAdapter().notifyDataSetChanged();
+
                 updateMap();
+                recyclerMarker.getAdapter().notifyDataSetChanged();
             }
         });
 
@@ -193,7 +220,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                         myPosition = latLng;
                         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+
+                        updateMap();
+                        recyclerMarker.getAdapter().notifyDataSetChanged();
                     }
+                    else Toast.makeText(context,"Геолокация не включена!",Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -216,7 +247,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         addrsses = geocoder.getFromLocationName(address,1);
                         if(addrsses.size()>0) {
                             LatLng latLng = new LatLng(addrsses.get(0).getLatitude(), addrsses.get(0).getLongitude());
-                            Toast.makeText(context, "Метка добавлена", Toast.LENGTH_LONG).show();
+                            //Toast.makeText(context, "Метка добавлена", Toast.LENGTH_LONG).show();
 
                             PhotoMarker pm;
                             MarkerOptions mo;
@@ -228,7 +259,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             markers.add(mMap.addMarker(mo));
 
                             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-                            mMap.moveCamera(CameraUpdateFactory.zoomTo(14));//
+                            //mMap.moveCamera(CameraUpdateFactory.zoomTo(14));//
+
+                            updateMap();
+                            recyclerMarker.getAdapter().notifyDataSetChanged();
                         }
                         else Toast.makeText(context, "Неверный адрес", Toast.LENGTH_LONG).show();
 
@@ -251,6 +285,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View view) {
                 travel = true;
+                addTravel.setEnabled(false);
             }
         });
 
@@ -261,12 +296,43 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         recyclerTravel.setAdapter(new TravelAdapter());
         recyclerTravel.getAdapter().notifyDataSetChanged();
 
+        recyclerMarker = (RecyclerView)findViewById(R.id.marker_recycler);
+        recyclerMarker.setLayoutManager(new LinearLayoutManager(this));
+        recyclerMarker.setAdapter(new MarkerAdapter());
+        getFreeMarkers();
+        recyclerMarker.getAdapter().notifyDataSetChanged();
+
+        printAll = (Button)findViewById(R.id.print_all);
+        printAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                updateMap();
+                recyclerMarker.getAdapter().notifyDataSetChanged();
+                delTravel.setEnabled(false);
+            }
+        });
+
+        delTravel = (Button)findViewById(R.id.del_travel);
+        delTravel.setEnabled(false);
+        delTravel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                travels.remove(idTravel);
+                delTravel.setEnabled(false);
+                updateMap();
+                recyclerTravel.getAdapter().notifyDataSetChanged();
+                recyclerMarker.getAdapter().notifyDataSetChanged();
+            }
+        });
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
         context = MapsActivity.this;
+
+
     }
 
     public void setMarkers() {
@@ -278,7 +344,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //pm.setMarkerOptions(mo);
         markers.add(mMap.addMarker(mo));
 
-        mo = new MarkerOptions().position(new LatLng(34, 151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+        mo = new MarkerOptions().position(new LatLng(-34, 151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
         pm = new PhotoMarker(mo);
         photoMarkers.add(pm);
         //pm.setMarkerOptions(mo);
@@ -316,8 +382,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for (PhotoMarker pm : photoMarkers)
             markers.add(mMap.addMarker(pm.getMarkerOptions()));
 
-        //add all travel
+        polylines.clear();
+        for (Travel tr : travels)
+            polylines.add(mMap.addPolyline(tr.getOptions()));
 
+        getFreeMarkers();
+    }
+
+    public void getFreeMarkers(){
+        markersFree.clear();
+        boolean b;
+        for(int i = 0; i<markers.size();i++) {
+            b = true;
+            for (int j = 0; j < travels.size(); j++)
+                if (travels.get(j).getLatLngStart().equals(markers.get(i).getPosition())) b = false;
+                else if (travels.get(j).getLatLngEnd().equals(markers.get(i).getPosition())) b = false;
+
+            if(b==true) markersFree.add(markers.get(i));
+        }
+        //Toast.makeText(context,"markersFree.size = "+markersFree.size(),Toast.LENGTH_LONG).show();
     }
 
     class TravelViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
@@ -333,8 +416,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         public void onClick(View view) {
-            //print tolko etot travel
             idTravel = this.getLayoutPosition();
+            mMap.clear();
+
+            int i1 = -1;
+            int i2 = -1;
+
+            for(int i = 0; i<markers.size();i++)
+                if(markers.get(i).getPosition().equals(travels.get(idTravel).getLatLngStart())) i1 = i;
+                else if(markers.get(i).getPosition().equals(travels.get(idTravel).getLatLngEnd())) i2 = i;
+
+            mMap.addPolyline(travels.get(idTravel).getOptions());
+            mMap.addMarker(photoMarkers.get(i1).getMarkerOptions());
+            mMap.addMarker(photoMarkers.get(i2).getMarkerOptions());
+
+            delTravel.setEnabled(true);
         }
     }
 
@@ -359,6 +455,45 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    class MarkerViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
+
+        private TextView tv;
+
+        public MarkerViewHolder(View itemView) {
+            super(itemView);
+            tv = (TextView)itemView.findViewById(R.id.text_marker_title);
+
+            itemView.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View view) {
+
+        }
+    }
+
+    class MarkerAdapter extends RecyclerView.Adapter<MarkerViewHolder>{
+
+        @Override
+        public MarkerViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View itemLayuotItem = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.marker_item, parent, false);
+            MarkerViewHolder viewHolder = new MarkerViewHolder(itemLayuotItem);
+            return viewHolder;
+        }
+
+        @Override
+        public void onBindViewHolder(MarkerViewHolder holder, int position) {
+            holder.tv.setText(markersFree.get(position).getTitle());
+        }
+
+        @Override
+        public int getItemCount() {
+            return markersFree.size();
+        }
+    }
+
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -373,11 +508,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
 
         UiSettings uis = mMap.getUiSettings();
-        //uis.setMapToolbarEnabled(true);
-        //UiSettings.setMapToolbarEnabled(true);k
+        uis.setZoomControlsEnabled(true);
+
 
 
         setMarkers();
+
+        updateMap();
 
 
 
@@ -399,6 +536,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 photoMarkers.add(pm);
                 //pm.setMarkerOptions(mo);
                 markers.add(mMap.addMarker(mo));
+
+                updateMap();
+                recyclerMarker.getAdapter().notifyDataSetChanged();
 
                 /*markers.add(new PhotoMarker(new MarkerOptions().position(latLng)
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW))));
@@ -430,6 +570,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 addPhoto.setEnabled(false);
                 iconSpinner.setEnabled(false);
                 id = -1;
+                //idTravel = -1;
             }
         });
 
@@ -484,9 +625,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     latLngEnd = marker.getPosition();
 
                     Travel tr;
-                    PolylineOptions po;
-                    po = new PolylineOptions().add(latLngStart).add(latLngEnd);
-                    tr = new Travel(po,editTravelName.getText().toString(),colorSpinner.getSelectedItemPosition());
+                    //PolylineOptions po;
+                    //po = new PolylineOptions().add(latLngStart).add(latLngEnd);
+                    tr = new Travel(latLngStart,latLngEnd,editTravelName.getText().toString(),colorSpinner.getSelectedItemPosition());
                     travels.add(tr);
                     //pm.setMarkerOptions(mo);
                     polylines.add(mMap.addPolyline(tr.getOptions()));
@@ -498,6 +639,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     recyclerTravel.getAdapter().notifyDataSetChanged();
                     editTravelName.setText("Путешествие");
                     //marker.hideInfoWindow();
+
+                    addTravel.setEnabled(true);
+                    getFreeMarkers();
+                    recyclerMarker.getAdapter().notifyDataSetChanged();
                 }
             }
 

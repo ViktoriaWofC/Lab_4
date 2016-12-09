@@ -16,16 +16,17 @@ public class Travel {
     private String title;
     //private int color;
 
-    public Travel(PolylineOptions options,String title, int k){
+    public Travel(LatLng latLngStart,LatLng latLngEnd,String title, int k){
         int color = -1;
         if(k==0) color = Color.BLACK;
         else if(k==1) color = Color.GREEN;
         else if(k==2) color = Color.YELLOW;
         else if(k==3) color = Color.MAGENTA;
         else if(k==4) color = Color.RED;
-        this.options = options.color(color);
+        this.options = new PolylineOptions().add(latLngStart).add(latLngEnd).color(color);
         this.title = title;
-
+        this.latLngStart = latLngStart;
+        this.latLngEnd = latLngEnd;
     }
 
     public PolylineOptions getOptions(){
@@ -34,6 +35,14 @@ public class Travel {
 
     public String getTitle(){
         return title;
+    }
+
+    public LatLng getLatLngStart(){
+        return latLngStart;
+    }
+
+    public LatLng getLatLngEnd(){
+        return latLngEnd;
     }
 
 }

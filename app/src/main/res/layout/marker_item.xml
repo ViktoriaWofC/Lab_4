@@ -15,7 +15,7 @@
             android:padding="5dp">
 
             <TextView
-                android:id="@+id/text_travel_title"
+                android:id="@+id/text_marker_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/colorPrimaryDark"

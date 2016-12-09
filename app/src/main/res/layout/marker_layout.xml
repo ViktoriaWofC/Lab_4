@@ -43,10 +43,8 @@
 
         <Button
             android:id="@+id/save_marker"
-            android:background="@color/colorAccent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
             android:text="@string/save"/>
 
         <View
@@ -55,10 +53,8 @@
 
         <Button
             android:id="@+id/add_photo"
-            android:background="@color/colorAccent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
             android:text="@string/add_photo"/>
 
         <View
@@ -67,10 +63,8 @@
 
         <Button
             android:id="@+id/delete_marker"
-            android:background="@color/colorAccent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
             android:text="@string/del_marker"/>
 
     </LinearLayout>
