@@ -5,12 +5,26 @@
     <string name="discr">Описание:</string>
     <string name="icon_color">Цвет иконки:</string>
     <string name="del_marker">Удалить маркер</string>
+    <string name="add_photo">Добавить фото</string>
+    <string name="add_curr_place">Добавить текущее место</string>
+    <string name="adress">Введите адрес</string>
+    <string name="add_marker">Добавить метку</string>
+    <string name="add_travel">Добавить путешествие</string>
+    <string name="travel_list">Список путешествий:</string>
 
     <string-array name="colorIcon">
-        <item>Синий</item>
+        <item>Крест</item>
+        <item>Дом</item>
+        <item>Фото</item>
+        <item>Бетмэн</item>
+        <item>Пират</item>
+    </string-array>
+
+    <string-array name="colorTravel">
+        <item>Черный</item>
         <item>Зеленый</item>
-        <item>Красный</item>
-        <item>Фиолетовый</item>
         <item>Желтый</item>
+        <item>Розовый</item>
+        <item>Красный</item>
     </string-array>
 </resources>

@@ -22,11 +22,63 @@
 
     <LinearLayout
         android:layout_margin="5dp"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <include layout="@layout/marker_layout" />
+        <include layout="@layout/marker_layout"
+            android:layout_width="900dp"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/add_current_place"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/add_curr_place"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <EditText
+            android:id="@+id/edit_adress"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:hint="@string/adress"/>
+
+        <Button
+            android:id="@+id/add_adress_place"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/add_marker"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <EditText
+            android:id="@+id/edit_name_travel"
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"/>
+
+
+        <Spinner
+            android:id="@+id/color_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:entries="@array/colorTravel"/>
+
+        <Button
+            android:id="@+id/add_travel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/add_travel"/>
 
     </LinearLayout>
 
@@ -51,6 +103,25 @@
             android:layout_height="match_parent"
             android:layout_marginLeft="5dp"
             android:background="@color/colorAccent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/travel_list"/>
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/travel_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"/>
+
+            <View
+                android:layout_width="10dp"
+                android:layout_height="10dp"/>
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/marker_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="400dp"/>
 
         </LinearLayout>
 

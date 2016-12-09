@@ -1,21 +1,45 @@
 package com.user.example.lab_4;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.location.Address;
+import android.location.Criteria;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationManager;
+import android.net.Uri;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Adapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.Api;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -25,20 +49,54 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.io.FileDescriptor;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private GoogleMap mMap;
     private Context context;
-    List<PhotoMarker> markers = new ArrayList<>();
+    List<PhotoMarker> photoMarkers = new ArrayList<>();
+    List<Marker> markers = new ArrayList<>();
     int id = -1;
+    List<Travel> travels = new ArrayList<>();
+    List<Polyline> polylines = new ArrayList<>();
+    int idTravel = -1;
+    boolean travel = false;
     EditText editTitle;
+    EditText editAdress;
+    EditText editTravelName;
     Button saveMarker;
     Button deleteMarker;
+    Button addPhoto;
+    Button addCurrentPlace;
+    Button addAdressPlace;
+    Button addTravel;
+    Spinner iconSpinner;
     Spinner colorSpinner;
+    LatLng latLngStart;
+    LatLng latLngEnd;
+
+    RecyclerView recyclerTravel;
+
+
+    GoogleApiClient googleApiClient;
+    Geocoder geocoder;
+    public static final String TAG = MapsActivity.class.getSimpleName();
+
+    LatLng myPosition;
+
+    final int PHOTO = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,39 +104,162 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //setContentView(R.layout.activity_maps);
         setContentView(R.layout.main_activity);
 
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
 
-        editTitle = (EditText)findViewById(R.id.edit_title);
+        geocoder = new Geocoder(this, Locale.getDefault());
+
+        editTitle = (EditText) findViewById(R.id.edit_title);
         editTitle.setEnabled(false);
-        saveMarker = (Button)findViewById(R.id.save_marker);
+        saveMarker = (Button) findViewById(R.id.save_marker);
         saveMarker.setEnabled(false);
         saveMarker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                photoMarkers.get(id).setTitle(editTitle.getText().toString());
+                photoMarkers.get(id).setIcon(iconSpinner.getSelectedItemPosition());
+
                 markers.get(id).setTitle(editTitle.getText().toString());
-                markers.get(id).setColor(colorSpinner.getSelectedItemPosition());
-                markers.get(id).getMarker().hideInfoWindow();
+                markers.get(id).setIcon(photoMarkers.get(id).getIconBitm());
+                markers.get(id).hideInfoWindow();
             }
         });
 
-        deleteMarker = (Button)findViewById(R.id.delete_marker);
+        deleteMarker = (Button) findViewById(R.id.delete_marker);
         deleteMarker.setEnabled(false);
         deleteMarker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                markers.get(id).getMarker().setVisible(false);
+                photoMarkers.remove(id);
+                //markers.get(id).setVisible(false);
+                markers.remove(id);
+                //markers.get(id).getMarker().setVisible(false);
                 //markers.remove(id);
                 editTitle.setText("");
                 editTitle.setEnabled(false);
                 saveMarker.setEnabled(false);
                 deleteMarker.setEnabled(false);
-                colorSpinner.setEnabled(false);
+                addPhoto.setEnabled(false);
+                iconSpinner.setEnabled(false);
                 id = -1;
-                //updateMap();
+                updateMap();
+            }
+        });
+
+        addPhoto = (Button) findViewById(R.id.add_photo);
+        addPhoto.setEnabled(false);
+        addPhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                //intent.putExtra(MediaStore.EXTRA_OUTPUT, generateFileUri());
+                startActivityForResult(intent, PHOTO);
+            }
+        });
+
+        addCurrentPlace = (Button) findViewById(R.id.add_current_place);
+        addCurrentPlace.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (ActivityCompat.checkSelfPermission(MapsActivity.this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(MapsActivity.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    Toast.makeText(context,"Геолокация не включена!",Toast.LENGTH_LONG).show();
+                    //return;
+                }else {
+                    //mMap.setMyLocationEnabled(true);
+
+                    Location location = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
+                    if (location != null) {
+
+                        //Toast.makeText(context,"location !=null",Toast.LENGTH_LONG).show();
+                        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                        PhotoMarker pm;
+                        MarkerOptions mo;
+                        mo = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+                        pm = new PhotoMarker(mo);
+                        photoMarkers.add(pm);
+                        //pm.setMarkerOptions(mo);
+                        markers.add(mMap.addMarker(mo));
+
+                        myPosition = latLng;
+                        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    }
+                }
+            }
+        });
+
+        editAdress = (EditText)findViewById(R.id.edit_adress);
+        editAdress.setText("ул. Волгина, 132Б");
+
+        addAdressPlace = (Button)findViewById(R.id.add_adress_place);
+        addAdressPlace.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String address = "";
+                address = editAdress.getText().toString();
+                if(address.length()==0){
+                    Toast.makeText(context,"Введите адрес!",Toast.LENGTH_LONG).show();
+                }
+                else{
+                    try {
+                        List<Address> addrsses = null;
+                        addrsses = geocoder.getFromLocationName(address,1);
+                        if(addrsses.size()>0) {
+                            LatLng latLng = new LatLng(addrsses.get(0).getLatitude(), addrsses.get(0).getLongitude());
+                            Toast.makeText(context, "Метка добавлена", Toast.LENGTH_LONG).show();
+
+                            PhotoMarker pm;
+                            MarkerOptions mo;
+                            mo = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+                            pm = new PhotoMarker(mo);
+                            photoMarkers.add(pm);
+                            //pm.setMarkerOptions(mo);
+
+                            markers.add(mMap.addMarker(mo));
+
+                            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                            mMap.moveCamera(CameraUpdateFactory.zoomTo(14));//
+                        }
+                        else Toast.makeText(context, "Неверный адрес", Toast.LENGTH_LONG).show();
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+
+        iconSpinner = (Spinner) findViewById(R.id.icon_spinner);
+        iconSpinner.setEnabled(false);
+        ///////////////////////////////////////////////////////////////
+        editTravelName = (EditText)findViewById(R.id.edit_name_travel);
+        editTravelName.setText("Путешествие");
+
+        addTravel = (Button)findViewById(R.id.add_travel);
+        addTravel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                travel = true;
             }
         });
 
         colorSpinner = (Spinner)findViewById(R.id.color_spinner);
-        colorSpinner.setEnabled(false);
+
+        recyclerTravel = (RecyclerView)findViewById(R.id.travel_recycler);
+        recyclerTravel.setLayoutManager(new LinearLayoutManager(this));
+        recyclerTravel.setAdapter(new TravelAdapter());
+        recyclerTravel.getAdapter().notifyDataSetChanged();
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -88,47 +269,94 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         context = MapsActivity.this;
     }
 
-    public void setMarkers(){
+    public void setMarkers() {
         PhotoMarker pm;
         MarkerOptions mo;
-        mo = new MarkerOptions().position(new LatLng(34, 151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_menu));
-        pm = new PhotoMarker(mMap.addMarker(mo));
-        pm.setMarkerOptions(mo);
-        markers.add(pm);
+        mo = new MarkerOptions().position(new LatLng(34, 151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+        pm = new PhotoMarker(mo);
+        photoMarkers.add(pm);
+        //pm.setMarkerOptions(mo);
+        markers.add(mMap.addMarker(mo));
 
-        mo = new MarkerOptions().position(new LatLng(34, 151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_menu));
-        pm = new PhotoMarker(mMap.addMarker(mo));
-        pm.setMarkerOptions(mo);
-        markers.add(pm);
+        mo = new MarkerOptions().position(new LatLng(34, 151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+        pm = new PhotoMarker(mo);
+        photoMarkers.add(pm);
+        //pm.setMarkerOptions(mo);
+        markers.add(mMap.addMarker(mo));
 
-        mo = new MarkerOptions().position(new LatLng(-34, -151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_menu));
-        pm = new PhotoMarker(mMap.addMarker(mo));
-        pm.setMarkerOptions(mo);
-        markers.add(pm);
+        mo = new MarkerOptions().position(new LatLng(-34, -151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+        pm = new PhotoMarker(mo);
+        photoMarkers.add(pm);
+        //pm.setMarkerOptions(mo);
+        markers.add(mMap.addMarker(mo));
 
-        mo = new MarkerOptions().position(new LatLng(34, -151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_menu));
-        pm = new PhotoMarker(mMap.addMarker(mo));
-        pm.setMarkerOptions(mo);
-        markers.add(pm);
+        mo = new MarkerOptions().position(new LatLng(34, -151)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+        pm = new PhotoMarker(mo);
+        photoMarkers.add(pm);
+        //pm.setMarkerOptions(mo);
+        markers.add(mMap.addMarker(mo));
 
-        mo = new MarkerOptions().position(new LatLng(-34, 51)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_menu));
-        pm = new PhotoMarker(mMap.addMarker(mo));
-        pm.setMarkerOptions(mo);
-        markers.add(pm);
+        mo = new MarkerOptions().position(new LatLng(-34, 51)).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+        pm = new PhotoMarker(mo);
+        photoMarkers.add(pm);
+        //pm.setMarkerOptions(mo);
+        markers.add(mMap.addMarker(mo));
 
-        markers.get(1).setColor(2);
-        markers.get(2).setColor(4);
+        photoMarkers.get(1).setIcon(2);
+        photoMarkers.get(2).setIcon(4);
+        markers.get(1).setIcon(photoMarkers.get(1).getIconBitm());
+        markers.get(2).setIcon(photoMarkers.get(2).getIconBitm());
 
     }
 
-    public void updateMap(){
+    public void updateMap() {
 
-        //mMap.clear();
-        for(PhotoMarker pm: markers)
-            mMap.addMarker(pm.getMarkerOptions());
+        markers.clear();
+        mMap.clear();
+        for (PhotoMarker pm : photoMarkers)
+            markers.add(mMap.addMarker(pm.getMarkerOptions()));
 
         //add all travel
 
+    }
+
+    class TravelViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
+
+        private TextView tv;
+
+        public TravelViewHolder(View itemView) {
+            super(itemView);
+            tv = (TextView)itemView.findViewById(R.id.text_travel_title);
+
+            itemView.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View view) {
+            //print tolko etot travel
+            idTravel = this.getLayoutPosition();
+        }
+    }
+
+    class TravelAdapter extends RecyclerView.Adapter<TravelViewHolder>{
+
+        @Override
+        public TravelViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View itemLayuotItem = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.travel_item, parent, false);
+            TravelViewHolder viewHolder = new TravelViewHolder(itemLayuotItem);
+            return viewHolder;
+        }
+
+        @Override
+        public void onBindViewHolder(TravelViewHolder holder, int position) {
+            holder.tv.setText(travels.get(position).getTitle());
+        }
+
+        @Override
+        public int getItemCount() {
+            return travels.size();
+        }
     }
 
     /**
@@ -148,18 +376,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //uis.setMapToolbarEnabled(true);
         //UiSettings.setMapToolbarEnabled(true);k
 
-        // Add a marker in Sydney and move the camera
-
-        //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 
         setMarkers();
 
-        //for(PhotoMarker pm: markers)
-        //    mMap.addMarker(pm.getMarker());
+
+
 
 
         LatLng ll = new LatLng(0,0);
         mMap.moveCamera(CameraUpdateFactory.newLatLng(ll));
+
 
         mMap.setInfoWindowAdapter(new MarkerInfoAdapter());
 
@@ -168,10 +394,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onMapLongClick(LatLng latLng) {
                 PhotoMarker pm;
                 MarkerOptions mo;
-                mo = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_menu));
-                pm = new PhotoMarker(mMap.addMarker(mo));
-                pm.setMarkerOptions(mo);
-                markers.add(pm);
+                mo = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+                pm = new PhotoMarker(mo);
+                photoMarkers.add(pm);
+                //pm.setMarkerOptions(mo);
+                markers.add(mMap.addMarker(mo));
 
                 /*markers.add(new PhotoMarker(new MarkerOptions().position(latLng)
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW))));
@@ -184,13 +411,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onInfoWindowClick(Marker marker) {
                 editTitle.setEnabled(true);
-                editTitle.setText(markers.get(id).getTitle());
+                editTitle.setText(photoMarkers.get(id).getTitle());
                 saveMarker.setEnabled(true);
                 deleteMarker.setEnabled(true);
-                colorSpinner.setEnabled(true);
-                colorSpinner.setSelection(markers.get(id).getColor());
-                //Toast.makeText(MapsActivity.this, "open", Toast.LENGTH_LONG).show();
-
+                addPhoto.setEnabled(true);
+                iconSpinner.setEnabled(true);
+                iconSpinner.setSelection(photoMarkers.get(id).getIconInt());
             }
         });
 
@@ -201,12 +427,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 editTitle.setEnabled(false);
                 saveMarker.setEnabled(false);
                 deleteMarker.setEnabled(false);
-                colorSpinner.setEnabled(false);
+                addPhoto.setEnabled(false);
+                iconSpinner.setEnabled(false);
                 id = -1;
             }
         });
 
 
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        Log.i(TAG,"location connect");
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.i(TAG,"location suspended");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        googleApiClient.connect();
     }
 
     class MarkerInfoAdapter implements GoogleMap.InfoWindowAdapter {
@@ -216,13 +464,42 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             LayoutInflater inflater = LayoutInflater.from(context);
             View layout = inflater.inflate(R.layout.info_window_layout,null);
             TextView b = (TextView)layout.findViewById(R.id.title_text);
+            ImageView iv = (ImageView)layout.findViewById(R.id.image_view);
             b.setText("!!!!");
 
             for(int i = 0; i< markers.size();i++)
-                if(marker.getPosition().equals(markers.get(i).getMarker().getPosition()))
+                if(marker.getPosition().equals(markers.get(i).getPosition()))
                     id = i;
 
-            b.setText(markers.get(id).getTitle());
+            b.setText(photoMarkers.get(id).getTitle());
+
+            if(photoMarkers.get(id).getBitmap()!=null) {
+                //Toast.makeText(context,"bitmap != null",Toast.LENGTH_LONG).show();
+                iv.setImageBitmap(photoMarkers.get(id).getBitmap());//setImageURI(photoMarkers.get(id).getUri());
+            }
+
+            if(travel){
+                if(latLngStart==null) latLngStart = marker.getPosition();
+                else {
+                    latLngEnd = marker.getPosition();
+
+                    Travel tr;
+                    PolylineOptions po;
+                    po = new PolylineOptions().add(latLngStart).add(latLngEnd);
+                    tr = new Travel(po,editTravelName.getText().toString(),colorSpinner.getSelectedItemPosition());
+                    travels.add(tr);
+                    //pm.setMarkerOptions(mo);
+                    polylines.add(mMap.addPolyline(tr.getOptions()));
+
+                    latLngStart = null;
+                    latLngEnd = null;
+                    travel = false;
+
+                    recyclerTravel.getAdapter().notifyDataSetChanged();
+                    editTravelName.setText("Путешествие");
+                    //marker.hideInfoWindow();
+                }
+            }
 
             return layout;
 
@@ -234,5 +511,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        //super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == PHOTO)
+            if(resultCode == RESULT_OK)
+                if(data != null){
+                    //Toast.makeText(context,"save photo",Toast.LENGTH_LONG).show();
+                    //Uri uri = data.getData();
+                    Bitmap bitmap = data.getParcelableExtra("data");
+                    //photoMarkers.get(id).setUri(uri);
+                    photoMarkers.get(id).setBitmap(bitmap);
+                    markers.get(id).showInfoWindow();
+                }
 
+
+
+    }
 }
