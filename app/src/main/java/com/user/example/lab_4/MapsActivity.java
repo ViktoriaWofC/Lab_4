@@ -12,6 +12,7 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -97,6 +98,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     RecyclerView recyclerTravel;
     RecyclerView recyclerMarker;
+
+    AddressAsyncTask addressAsyncTask;
+    String address = "";
 
 
     GoogleApiClient googleApiClient;
@@ -236,40 +240,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         addAdressPlace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String address = "";
                 address = editAdress.getText().toString();
-                if(address.length()==0){
-                    Toast.makeText(context,"Введите адрес!",Toast.LENGTH_LONG).show();
-                }
-                else{
-                    try {
-                        List<Address> addrsses = null;
-                        addrsses = geocoder.getFromLocationName(address,1);
-                        if(addrsses.size()>0) {
-                            LatLng latLng = new LatLng(addrsses.get(0).getLatitude(), addrsses.get(0).getLongitude());
-                            //Toast.makeText(context, "Метка добавлена", Toast.LENGTH_LONG).show();
-
-                            PhotoMarker pm;
-                            MarkerOptions mo;
-                            mo = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
-                            pm = new PhotoMarker(mo);
-                            photoMarkers.add(pm);
-                            //pm.setMarkerOptions(mo);
-
-                            markers.add(mMap.addMarker(mo));
-
-                            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-                            //mMap.moveCamera(CameraUpdateFactory.zoomTo(14));//
-
-                            updateMap();
-                            recyclerMarker.getAdapter().notifyDataSetChanged();
-                        }
-                        else Toast.makeText(context, "Неверный адрес", Toast.LENGTH_LONG).show();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
+                addressAsyncTask = new AddressAsyncTask();
+                addressAsyncTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             }
         });
 
@@ -493,6 +466,58 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    class AddressAsyncTask extends AsyncTask<Object, Object, LatLng>{
+
+        @Override
+        protected LatLng doInBackground(Object... voids) {
+
+            LatLng latLng = null;
+            if(address.length()==0){
+                Toast.makeText(context,"Введите адрес!",Toast.LENGTH_LONG).show();
+            }
+            else{
+                try {
+                    List<Address> addrsses = null;
+                    addrsses = geocoder.getFromLocationName(address,1);
+                    if(addrsses.size()>0) {
+                        latLng = new LatLng(addrsses.get(0).getLatitude(), addrsses.get(0).getLongitude());
+                        //Toast.makeText(context, "Метка добавлена", Toast.LENGTH_LONG).show();
+
+
+                        //mMap.moveCamera(CameraUpdateFactory.zoomTo(14));//
+
+                        //updateMap();
+                        //recyclerMarker.getAdapter().notifyDataSetChanged();
+                    }
+                    else Toast.makeText(context, "Неверный адрес", Toast.LENGTH_LONG).show();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return latLng;
+        }
+
+        @Override
+        protected void onPostExecute(LatLng latLng) {
+            super.onPostExecute(latLng);
+            if(latLng!=null) {
+                PhotoMarker pm;
+                MarkerOptions mo;
+                mo = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.icon_del));
+                pm = new PhotoMarker(mo);
+                photoMarkers.add(pm);
+                //pm.setMarkerOptions(mo);
+
+                markers.add(mMap.addMarker(mo));
+
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+
+                updateMap();
+                recyclerMarker.getAdapter().notifyDataSetChanged();
+            }
+        }
+    }
 
     /**
      * Manipulates the map once available.
