@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -228,7 +229,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         updateMap();
                         recyclerMarker.getAdapter().notifyDataSetChanged();
                     }
-                    else Toast.makeText(context,"Геолокация не включена!",Toast.LENGTH_LONG).show();
+                    else {
+                        Toast.makeText(context,"Геолокация не включена!",Toast.LENGTH_LONG).show();
+                        final AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+                        final String action = Settings.ACTION_LOCATION_SOURCE_SETTINGS;
+                        final String message = "Геолокация не включена!\n" +
+                                "Перейти в меню настроек геолокации?";
+                        builder.setMessage(message)
+                                .setTitle("Настройки геолокации")
+                                .setPositiveButton("OK",
+                                        new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface d, int id) {
+                                                startActivity(new Intent(action));
+                                                d.dismiss();
+                                            }
+                                        })
+                                .setNegativeButton("Отмена",
+                                        new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface d, int id) {
+                                                d.cancel();
+                                            }
+                                        });
+                        builder.create().show();
+                    }
                 }
             }
         });
